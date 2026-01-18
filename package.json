@@ -1,0 +1,13 @@
+{
+  "name": "tg-wa-vnote",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8",
+    "axios": "^1.6.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-telegram-bot-api": "^0.64.0"
+  }
+}
