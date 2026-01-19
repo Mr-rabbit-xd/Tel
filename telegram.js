@@ -9,7 +9,7 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
 
   if (!match[1]) {
-    return bot.sendMessage(chatId, "❌ Format:\n/vnote 919xxxxxxxx https://link.mp3");
+    return bot.sendMessage(chatId, "❌ Format: /vnote 919xxxxxxxx https://link.mp3");
   }
 
   const args = match[1].split(" ");
