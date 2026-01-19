@@ -4,11 +4,10 @@ import { createPair } from "./pair.js";
 import { sendVnote } from "./vnote.js";
 import fs from "fs";
 
-const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
+const bot = new TelegramBot("8285550814:AAF8fiXtfhFHH5w1di0ElOUFUnUBBJezQ6M", { polling: true });
 
 console.log("ℹ️ Telegram bot polling shuru hoyeche");
 
-// Active session track korar jonno
 const activeSessions = new Map();
 
 bot.onText(/\/vnote (.+)/, async (msg, match) => {
@@ -27,7 +26,6 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
     return bot.sendMessage(chatId, "❌ Number ba song link missing");
   }
 
-  // Duplicate request block koro
   if (activeSessions.has(number)) {
     return bot.sendMessage(chatId, "⏳ Ei number already process hochhe. Ektu wait koro.");
   }
@@ -44,20 +42,17 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
       { parse_mode: "Markdown" }
     );
 
-    // 5 minute timeout set koro
     const pairTimeout = setTimeout(() => {
       console.log(`[TIMEOUT] Pairing timeout hoyeche ${number} er jonno`);
       cleanup();
       bot.sendMessage(chatId, "⏱️ Pairing timeout! Abar try koro.");
     }, 5 * 60 * 1000);
 
-    // Cleanup function
     const cleanup = () => {
       clearTimeout(pairTimeout);
       activeSessions.delete(number);
       try {
         sock.end();
-        // Check koro session folder ache kina
         if (fs.existsSync(sessionPath)) {
           fs.rmSync(sessionPath, { recursive: true, force: true });
           console.log(`[CLEANUP] Session delete hoyeche ${number} er jonno`);
@@ -70,7 +65,6 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
     sock.ev.on("connection.update", async (u) => {
       console.log(`[Baileys] Connection update:`, u);
 
-      // Connection open hole
       if (u.connection === "open") {
         clearTimeout(pairTimeout);
         console.log(`[Baileys] Connection open, vnote pathacchi ${number} e`);
@@ -83,13 +77,11 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
           console.error(`[ERROR] Voice note pathanote problem:`, e);
           await bot.sendMessage(chatId, `❌ Voice note pathate parini: ${e.message}`);
         } finally {
-          // Sob sheshe cleanup koro
           await sock.logout().catch(() => {});
           cleanup();
         }
       }
 
-      // Connection close hole
       if (u.connection === "close") {
         const shouldReconnect = u.lastDisconnect?.error?.output?.statusCode !== 401;
         console.log(`[Baileys] Connection close hoyeche. Reconnect korbo: ${shouldReconnect}`);
@@ -116,7 +108,6 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
   }
 });
 
-// Graceful shutdown
 process.on("SIGINT", () => {
   console.log("Bot bondho korchi...");
   bot.stopPolling();
@@ -124,4 +115,4 @@ process.on("SIGINT", () => {
 });
 ```
 
-## 
+Pura file ta replace kore dao. **Unexpected end of input** mane kono bracket ba curly brace missing ache. Ei code ta complete, shob kichu ache. Copy kore `telegram.js` file e paste kore dao.
