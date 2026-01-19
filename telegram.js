@@ -31,35 +31,34 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
 
   activeSessions.set(number, true);
 
+  const cleanup = async (sock, sessionPath) => {
+    activeSessions.delete(number);
+    try {
+      if (sock) await sock.logout().catch(() => {});
+      if (sessionPath && fs.existsSync(sessionPath)) {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`[CLEANUP] Session delete hoyeche ${number} er jonno`);
+      }
+    } catch (e) {
+      console.error(`[CLEANUP ERROR]`, e);
+    }
+  };
+
   try {
     console.log(`[INFO] Pair create korchi ${number} er jonno`);
-    const { sock, code, sessionPath } = await createPair(number);
+    const { sock, sessionPath } = await createPair(number);
 
     await bot.sendMessage(
       chatId,
-      `🔑 Pair Code:\n\n\`${code}\`\n\nWhatsApp → Link Device → Pair Code te paste koro`,
+      `🔑 Pair Device kore WhatsApp scan koro.\n\nConnection open hole voice note automatic jabe.`,
       { parse_mode: "Markdown" }
     );
 
     const pairTimeout = setTimeout(() => {
       console.log(`[TIMEOUT] Pairing timeout hoyeche ${number} er jonno`);
-      cleanup();
+      cleanup(sock, sessionPath);
       bot.sendMessage(chatId, "⏱️ Pairing timeout! Abar try koro.");
     }, 5 * 60 * 1000);
-
-    const cleanup = () => {
-      clearTimeout(pairTimeout);
-      activeSessions.delete(number);
-      try {
-        sock.end();
-        if (fs.existsSync(sessionPath)) {
-          fs.rmSync(sessionPath, { recursive: true, force: true });
-          console.log(`[CLEANUP] Session delete hoyeche ${number} er jonno`);
-        }
-      } catch (e) {
-        console.error(`[CLEANUP ERROR]`, e);
-      }
-    };
 
     sock.ev.on("connection.update", async (u) => {
       console.log(`[Baileys] Connection update:`, u);
@@ -67,7 +66,6 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
       if (u.connection === "open") {
         clearTimeout(pairTimeout);
         console.log(`[Baileys] Connection open, vnote pathacchi ${number} e`);
-        
         try {
           await sendVnote(sock, number, songUrl);
           await bot.sendMessage(chatId, "✅ Voice note successfully pathano hoyeche!");
@@ -76,18 +74,17 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
           console.error(`[ERROR] Voice note pathanote problem:`, e);
           await bot.sendMessage(chatId, `❌ Voice note pathate parini: ${e.message}`);
         } finally {
-          await sock.logout().catch(() => {});
-          cleanup();
+          await cleanup(sock, sessionPath);
         }
       }
 
       if (u.connection === "close") {
         const shouldReconnect = u.lastDisconnect?.error?.output?.statusCode !== 401;
         console.log(`[Baileys] Connection close hoyeche. Reconnect korbo: ${shouldReconnect}`);
-        
+
         if (!shouldReconnect) {
           await bot.sendMessage(chatId, "❌ Connection fail hoyeche. Abar try koro.");
-          cleanup();
+          await cleanup(sock, sessionPath);
         }
       }
     });
@@ -99,7 +96,6 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
     sock.ev.on("connection.error", (err) => {
       console.error(`[Baileys ERROR] Connection error:`, err);
     });
-
   } catch (err) {
     console.error(`[ERROR] Pair create korte parini:`, err);
     await bot.sendMessage(chatId, `❌ Pair create korte parini: ${err.message}`);
@@ -112,20 +108,3 @@ process.on("SIGINT", () => {
   bot.stopPolling();
   process.exit(0);
 });
-```
-
-Ar kono text ba comment paste korbe na, **ONLY** ei code ta!
-  } catch (err) {
-    console.error(`[ERROR] Pair create korte parini:`, err);
-    await bot.sendMessage(chatId, `❌ Pair create korte parini: ${err.message}`);
-    activeSessions.delete(number);
-  }
-});
-
-process.on("SIGINT", () => {
-  console.log("Bot bondho korchi...");
-  bot.stopPolling();
-  process.exit(0);
-});
-```
-
