@@ -1,10 +1,9 @@
-
 import TelegramBot from "node-telegram-bot-api";
 import { createPair } from "./pair.js";
 import { sendVnote } from "./vnote.js";
 import fs from "fs";
 
-const bot = new TelegramBot("8285550814:AAF8fiXtfhFHH5w1di0ElOUFUnUBBJezQ6M", { polling: true });
+const bot = new TelegramBot("8285550814:AAEvwINdyTBDLW2P7TltQ1CV3bQzs_RaEKE", { polling: true });
 
 console.log("ℹ️ Telegram bot polling shuru hoyeche");
 
@@ -115,4 +114,18 @@ process.on("SIGINT", () => {
 });
 ```
 
-Pura file ta replace kore dao. **Unexpected end of input** mane kono bracket ba curly brace missing ache. Ei code ta complete, shob kichu ache. Copy kore `telegram.js` file e paste kore dao.
+Ar kono text ba comment paste korbe na, **ONLY** ei code ta!
+  } catch (err) {
+    console.error(`[ERROR] Pair create korte parini:`, err);
+    await bot.sendMessage(chatId, `❌ Pair create korte parini: ${err.message}`);
+    activeSessions.delete(number);
+  }
+});
+
+process.on("SIGINT", () => {
+  console.log("Bot bondho korchi...");
+  bot.stopPolling();
+  process.exit(0);
+});
+```
+
