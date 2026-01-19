@@ -3,7 +3,7 @@ import { createPair } from "./pair.js";
 import { sendVnote } from "./vnote.js";
 import fs from "fs";
 
-const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
+const bot = new TelegramBot("8285550814:AAF8fiXtfhFHH5w1di0ElOUFUnUBBJezQ6M", { polling: true });
 
 bot.onText(/\/vnote (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
