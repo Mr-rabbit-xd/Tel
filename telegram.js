@@ -1,3 +1,4 @@
+
 import TelegramBot from "node-telegram-bot-api";
 import { createPair } from "./pair.js";
 import { sendVnote } from "./vnote.js";
@@ -5,11 +6,14 @@ import fs from "fs";
 
 const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
 
-console.log("ℹ️ Telegram bot polling started");
+console.log("ℹ️ Telegram bot polling shuru hoyeche");
+
+// Active session track korar jonno
+const activeSessions = new Map();
 
 bot.onText(/\/vnote (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
-  console.log(`[Telegram] Command received from ${chatId}: ${match[1]}`);
+  console.log(`[Telegram] Command peyechi ${chatId} theke: ${match[1]}`);
 
   if (!match[1]) {
     return bot.sendMessage(chatId, "❌ Format: /vnote 919xxxxxxxx https://link.mp3");
@@ -20,38 +24,85 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
   const songUrl = args[1];
 
   if (!number || !songUrl) {
-    return bot.sendMessage(chatId, "❌ Number or song link missing");
+    return bot.sendMessage(chatId, "❌ Number ba song link missing");
   }
 
+  // Duplicate request block koro
+  if (activeSessions.has(number)) {
+    return bot.sendMessage(chatId, "⏳ Ei number already process hochhe. Ektu wait koro.");
+  }
+
+  activeSessions.set(number, true);
+
   try {
-    console.log(`[INFO] Creating pair for ${number}`);
+    console.log(`[INFO] Pair create korchi ${number} er jonno`);
     const { sock, code, sessionPath } = await createPair(number);
 
     await bot.sendMessage(
       chatId,
-      `🔑 Pair Code:\n\n${code}\n\nWhatsApp → Link Device → Pair Code`
+      `🔑 Pair Code:\n\n\`${code}\`\n\nWhatsApp → Link Device → Pair Code te paste koro`,
+      { parse_mode: "Markdown" }
     );
+
+    // 5 minute timeout set koro
+    const pairTimeout = setTimeout(() => {
+      console.log(`[TIMEOUT] Pairing timeout hoyeche ${number} er jonno`);
+      cleanup();
+      bot.sendMessage(chatId, "⏱️ Pairing timeout! Abar try koro.");
+    }, 5 * 60 * 1000);
+
+    // Cleanup function
+    const cleanup = () => {
+      clearTimeout(pairTimeout);
+      activeSessions.delete(number);
+      try {
+        sock.end();
+        // Check koro session folder ache kina
+        if (fs.existsSync(sessionPath)) {
+          fs.rmSync(sessionPath, { recursive: true, force: true });
+          console.log(`[CLEANUP] Session delete hoyeche ${number} er jonno`);
+        }
+      } catch (e) {
+        console.error(`[CLEANUP ERROR]`, e);
+      }
+    };
 
     sock.ev.on("connection.update", async (u) => {
       console.log(`[Baileys] Connection update:`, u);
 
+      // Connection open hole
       if (u.connection === "open") {
-        console.log(`[Baileys] Connection open, sending vnote to ${number}`);
+        clearTimeout(pairTimeout);
+        console.log(`[Baileys] Connection open, vnote pathacchi ${number} e`);
+        
         try {
           await sendVnote(sock, number, songUrl);
-          await bot.sendMessage(chatId, "✅ Voice note sent successfully!");
-          console.log(`[SUCCESS] Vnote sent to ${number}`);
-
-          // CLEANUP
-          await sock.logout();
-          sock.end();
-          fs.rmSync(sessionPath, { recursive: true, force: true });
-          console.log(`[CLEANUP] Session deleted for ${number}`);
+          await bot.sendMessage(chatId, "✅ Voice note successfully pathano hoyeche!");
+          console.log(`[SUCCESS] Vnote pathano hoyeche ${number} e`);
         } catch (e) {
-          console.error(`[ERROR] Failed to send voice note:`, e);
-          await bot.sendMessage(chatId, "❌ Failed to send voice note");
+          console.error(`[ERROR] Voice note pathanote problem:`, e);
+          await bot.sendMessage(chatId, `❌ Voice note pathate parini: ${e.message}`);
+        } finally {
+          // Sob sheshe cleanup koro
+          await sock.logout().catch(() => {});
+          cleanup();
         }
       }
+
+      // Connection close hole
+      if (u.connection === "close") {
+        const shouldReconnect = u.lastDisconnect?.error?.output?.statusCode !== 401;
+        console.log(`[Baileys] Connection close hoyeche. Reconnect korbo: ${shouldReconnect}`);
+        
+        if (!shouldReconnect) {
+          await bot.sendMessage(chatId, "❌ Connection fail hoyeche. Abar try koro.");
+          cleanup();
+        }
+      }
+    });
+
+    sock.ev.on("creds.update", () => {
+      console.log(`[Baileys] Credentials update hoyeche ${number} er jonno`);
     });
 
     sock.ev.on("connection.error", (err) => {
@@ -59,7 +110,18 @@ bot.onText(/\/vnote (.+)/, async (msg, match) => {
     });
 
   } catch (err) {
-    console.error(`[ERROR] Could not create pair:`, err);
-    await bot.sendMessage(chatId, "❌ Failed to create pair");
+    console.error(`[ERROR] Pair create korte parini:`, err);
+    await bot.sendMessage(chatId, `❌ Pair create korte parini: ${err.message}`);
+    activeSessions.delete(number);
   }
 });
+
+// Graceful shutdown
+process.on("SIGINT", () => {
+  console.log("Bot bondho korchi...");
+  bot.stopPolling();
+  process.exit(0);
+});
+```
+
+## 
